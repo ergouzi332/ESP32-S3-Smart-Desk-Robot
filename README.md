@@ -52,7 +52,6 @@ Smartwatch/
 │   ├── weather.cpp               # 天气数据获取模块（心知天气 API）
 │   ├── max30102.cpp              # MAX30102 心率/血氧传感器驱动
 │   ├── dth11.cpp                 # DHT11 温湿度传感器驱动
-│   ├── battery.cpp               # 电池电压采集与电量检测
-│   └── AudioSpeaker.cpp          # I2S 音频输出模块（语音播报）
+│   └── battery.cpp               # 电池电压采集与电量检测
 ├── include/                      # 公共头文件目录
 └── platformio.ini                # PlatformIO 项目配置文件
