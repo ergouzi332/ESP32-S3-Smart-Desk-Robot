@@ -21,9 +21,15 @@ static uint16_t Get_ADC(void)
 // 内部获取单次电量
 static uint16_t GetBattery(void)
 {
-    // 你原版公式 一字不动
-    Battery_Value = (3.3  * Get_ADC() / 4096) * 100 - 300;
-    return (uint16_t)Battery_Value;
+    Battery_Value = (3.3 * 4 * Get_ADC() / 4096) * 100 - 300;
+
+    if(Battery_Value < 0)// 限幅：低于3.0V=0%，高于4.2V=100%
+        Battery_Value = 0;
+    if(Battery_Value > 120) // 4.2V对应计算值为120
+        Battery_Value = 100;
+
+    // 线性映射到 0~100%
+    return (uint16_t)(Battery_Value * 100 / 120);
 }
 
 
