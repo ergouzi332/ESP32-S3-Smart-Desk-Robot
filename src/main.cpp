@@ -5,16 +5,17 @@
 #include "mywifi.h"//WiFi判断
 #include "graphic.h"
 #include "weather.h"
-#include "AudioSpeaker.h"
 #include "mytime.h"
-#include "dth11.h"
+#include "dht11.h"
 #include "max30102.h"
 #include "battery.h"
 
+
 /*SU-03T1的串口引脚*/
-#define SU03T_RX_PIN 42
-#define SU03T_TX_PIN 41
+#define SU03T_RX_PIN 41
+#define SU03T_TX_PIN 42
 HardwareSerial SerialSU03T(2);//创建ESP32的2号硬件串口，取名为SerialSU03T
+
 
 /*OLED的I2C引脚*/
 #define I2C_SDA 21
@@ -22,11 +23,13 @@ HardwareSerial SerialSU03T(2);//创建ESP32的2号硬件串口，取名为Serial
 /*OLED的尺寸*/
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-/*u8g2对象接管OLED*/
+/*u8g2对象接OLED*/
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE,I2C_SCL, I2C_SDA);//R0,屏幕旋转0度，U8G2接管硬件I2C
 
+
 /*状态机定义*/
-typedef enum {
+typedef enum 
+{
   STATE_IDLE,          // 空闲 
   STATE_SHOW_TIME,     // 显示时间
   STATE_SHOW_WEATHER,  // 显示天气
@@ -35,12 +38,16 @@ typedef enum {
   STATE_SHOW_ENV,      // 显示温湿度
   STATE_SHOW_BATTERY   // 显示电量
 } SystemState;
+
 SystemState currentState = STATE_IDLE; //当前状态，初始空闲
+
 /*记录上一次的状态*/
 SystemState lastState = STATE_SHOW_WEATHER;
+
 static int hrSampleCount = 0;
 static int hrSampleSum = 0;
 static int hrFinalAverage = 0;
+
 
 /*setup初始化*/
 void setup() 
@@ -52,33 +59,37 @@ void setup()
     u8g2.begin();//初始化OLED屏幕驱动
     u8g2.setBusClock(400000);//设置硬件I2C的时钟频率为400kHz
     u8g2.clearBuffer();//清空屏幕缓冲区
-    wifi_connect_start();//WiFi连接(断掉自动重连)
+    wifi_connect_start();//WiFi连接(断开自动重连)
 
     setenv("TZ", "CST-8", 1);//东八区时间
     tzset();//立即生效
 
-    DTH11_Init();//DHT11初始化
+    DHT11_Init();//DHT11初始化
     MAX30102_Init(); // MAX30102 初始化
     GetBattery_Init();   //ADC初始化
 }
+
+
 /*语音解析*/
 void parseVoiceCommand() 
 {
-  if (Serial.available()) 
+  if (SerialSU03T.available()) 
   {
-    String cmd = Serial.readStringUntil('\n');
-    cmd.trim();//去掉字符串头尾的空格、换行、回车等多余垃圾字符
+    uint8_t cmd = SerialSU03T.read();
 
-    if (cmd == "AA") currentState = STATE_SHOW_TIME;//查看时间
-    else if (cmd == "BB") currentState = STATE_SHOW_WEATHER;//查看天气
-    else if (cmd == "CC") currentState = STATE_SHOW_HR;//测量心率
-    else if (cmd == "DD") currentState = STATE_SHOW_ENV;//测量温湿度
-    else if (cmd == "EE") currentState = STATE_SHOW_BATTERY;//查看电量
+    if (cmd == 0xAA) currentState = STATE_SHOW_TIME;//查看时间
+    else if (cmd == 0xBB) currentState = STATE_SHOW_WEATHER;//查看天气
+    else if (cmd == 0xCC) currentState = STATE_SHOW_HR;//测量心率
+    else if (cmd == 0xDD) currentState = STATE_SHOW_ENV;//测量温湿度
+    else if (cmd == 0xEE) currentState = STATE_SHOW_BATTERY;//查看电量
   }
 }
+
 /*状态机执行*/
-void runStateMachine() {
-  switch (currentState) {
+void runStateMachine() 
+{
+  switch (currentState) 
+  {
     /*空闲状态*/
     case STATE_IDLE:
     {
@@ -86,7 +97,8 @@ void runStateMachine() {
         static bool showText = true;//文字闪烁状态切换
         static unsigned long idleRefresh;//空闲界面刷新计时
         /*刚进入空闲状态获取计时*/
-         if (currentState != lastState) {
+         if (currentState != lastState) 
+         {
             blinkTimer = millis();
             idleRefresh = millis();
             showText = true;
@@ -103,12 +115,13 @@ void runStateMachine() {
                 if (showText) 
                 {
                     drawWifiConnected2(u8g2); // 显示文字 + 图标 + 表情
-                } else {
-                    drawWifiConnected1(u8g2); // 只显示图标 + 表情（文字消失）
+                } else 
+                {
+                    drawWifiConnected1(u8g2); // 只显示图标+ 表情（文字消失）
                 }
                 u8g2.sendBuffer();
             }
-        } else /*WIFI未连接，每秒刷新屏幕，减少发烫*/
+        } else /*WIFI未连接，每秒刷新屏幕，减少刷屏*/
         {
             if (millis() - idleRefresh >= 1000) 
             {
@@ -130,7 +143,7 @@ void runStateMachine() {
           start_time_time = millis();
           if (wifi_connected)
           {
-            /*绘制时间(包含WiFi已连接图标)*/
+            /*绘制时间(包含WiFi已连接图样)*/
             u8g2.clearBuffer();
             getTime();//获取时间数据
             drawTime(u8g2);
@@ -144,7 +157,6 @@ void runStateMachine() {
             u8g2.sendBuffer();
           }
         }
-
         if (millis() - start_time_time >= 4000)//停留四秒
         {
             currentState = STATE_IDLE;
@@ -161,7 +173,7 @@ void runStateMachine() {
           start_time_werther = millis();
           if (wifi_connected)
           {
-            /*绘制天气(包含WiFi已连接图标)*/
+            /*绘制天气(包含WiFi已连接图样)*/
             u8g2.clearBuffer();
             getWeather();//HTTP获取天气数据
             drawWeather(u8g2);
@@ -175,7 +187,6 @@ void runStateMachine() {
             u8g2.sendBuffer();
           }
         }
-
         if (millis() - start_time_werther >= 4000)//停留四秒
         {
             currentState = STATE_IDLE;
@@ -186,7 +197,7 @@ void runStateMachine() {
     case STATE_SHOW_HR:
     {
       static unsigned long start_time_hr;
-      /* 刚进入状态时启动测量并记录起始时间 */
+      /* 刚进入状态时启动测量并记录起始时间*/
       if (currentState != lastState)
       {
         start_time_hr = millis();
@@ -199,17 +210,18 @@ void runStateMachine() {
         drawHeartSpO2(u8g2, 10, false, 0);
         u8g2.sendBuffer();
       }
-      // 在该状态持续期间，定期读取并更新显示
-      // 每次循环都读取一次（readMAX30102 内部会根据 FIFO 返回数据）
+      // 每次循环都读取一次（readMAX30102 内部会根据FIFO 返回数据）
       readMAX30102();
       if (MAX30102_State.valid && MAX30102_State.heartRate > 0)
       {
         hrSampleCount++;//有效的心率次数
-        hrSampleSum += MAX30102_State.heartRate;//心率数值，全部加起来的总和
+        hrSampleSum += MAX30102_State.heartRate;//心率数值，全部加起来的和
       }
       unsigned long elapsed = millis() - start_time_hr;
+
       int remaining = 10 - (int)(elapsed / 1000);
       if (remaining < 0) remaining = 0;
+
       if(wifi_connected)
       {
       u8g2.clearBuffer();
@@ -236,6 +248,8 @@ void runStateMachine() {
       }
       break;
     }
+
+
     /*显示心率结果*/
     case STATE_SHOW_HR_RESULT:
     {
@@ -264,11 +278,14 @@ void runStateMachine() {
       u8g2.sendBuffer();
       }
 
-      if (elapsed >= 2000) {
+      if (elapsed >= 2000)//停留两秒
+      {
         currentState = STATE_IDLE;
       }
       break;
     }
+
+
     /*显示温湿度*/
     case STATE_SHOW_ENV:
     {
@@ -305,13 +322,11 @@ void runStateMachine() {
     case STATE_SHOW_BATTERY:
     {
       static unsigned long start_time_battery;
-
       if (currentState != lastState) {
           start_time_battery = millis();
       }
 
       GetCur_Power();
-
       // 实时刷新屏幕
       u8g2.clearBuffer();
 
@@ -325,10 +340,9 @@ void runStateMachine() {
         drawWifiConnecting2(u8g2);//WiFi未连接图标
         u8g2.sendBuffer();
       }
-
-
       // 4秒后退出
-      if (millis() - start_time_battery >= 4000) {
+      if (millis() - start_time_battery >= 4000) 
+      {
           currentState = STATE_IDLE;
       }
       break;
@@ -336,15 +350,12 @@ void runStateMachine() {
   }
 }
 
+
 void loop() 
 {
-
     wifi_task_loop();//判断WiFi状态
     parseVoiceCommand();//监听语音指令
     SystemState prevState = currentState; // 保存进入本次循环时的状态
     runStateMachine();//执行状态机
-
     lastState = prevState; // 记录上一次（进入本次循环时）的状态，供下一次循环比较
-
 }
-
