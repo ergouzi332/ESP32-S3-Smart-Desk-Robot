@@ -2,7 +2,7 @@
 #include "weather.h"
 #include "mytime.h"
 #include <U8g2lib.h>
-#include "dth11.h"
+#include "dht11.h"
 #include "max30102.h"
 #include "battery.h"
 
@@ -351,9 +351,9 @@ void drawDTH11(U8G2_SSD1306_128X64_NONAME_F_HW_I2C &u8g2)//温湿度
     char buf[32];
     /*显示温湿度*/
     u8g2.setFont(u8g2_font_wqy16_t_gb2312);
-    sprintf(buf, "温度：%.1f℃", DTH11_State.temperature);
+    sprintf(buf, "温度：%.1f℃", DHT11_State.temperature);
     u8g2.drawUTF8(10, 40, buf);
-    sprintf(buf, "湿度：%.1f%%RH", DTH11_State.humidity);
+    sprintf(buf, "湿度：%.1f%%RH", DHT11_State.humidity);
     u8g2.drawUTF8(10, 60, buf);
 }
 
@@ -431,10 +431,20 @@ void drawBatteryLevel(U8G2_SSD1306_128X64_NONAME_F_HW_I2C &u8g2)
    char buf[32];
    /*显示中文*/
     u8g2.enableUTF8Print();
-    u8g2.setFont(u8g2_font_wqy16_t_gb2312);   
+    u8g2.setFont(u8g2_font_wqy16_t_gb2312);
+    if(CurBattery==0)   
+    {
+      snprintf(buf, sizeof(buf), "正在检测");
+      int x = (128 - u8g2.getUTF8Width(buf)) / 2;
+      if (x < 0) x = 0;
+      u8g2.drawUTF8(x, 45, buf);
+    }
+    else
+    {
     sprintf(buf, "当前电量：%d%%", CurBattery);
     int x = (128 - u8g2.getUTF8Width(buf)) / 2;
     if (x < 0) x = 0;
     u8g2.drawUTF8(x, 45, buf);
+    }
 }
 
