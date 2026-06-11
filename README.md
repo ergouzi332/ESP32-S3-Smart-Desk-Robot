@@ -1,4 +1,4 @@
-# ESP32-S3-Smart-Desk-Robot# ESP32-S3 桌面智能交互机器人
+# ESP32-S3-smart-desk-terminal# ESP32-S3 桌面智能终端
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-IDE-blue)](https://platformio.org/)
 [![ESP32-S3](https://img.shields.io/badge/MCU-ESP32--S3--N16R8-green)](https://www.espressif.com/)
